@@ -1,0 +1,35 @@
+# NOTE: You may have to add the path to the <marcread> and
+#       <marcsearchhelper.pl> references in the code below.
+
+usage()
+{
+  print " "
+  print "Usage: marcsearch \"filespec\" search-string [count | show]"
+  print "       Searches marc file(s) indicated by filespec for search-string."
+  print "       Results show filename, and either count of search-string"
+  print "       occurrences for that file, or the fields containing search-string."
+  print "       If filespec contains a wildcard character, use double quotes."
+  print "       All three arguments are required."
+  print " "
+  exit
+}
+
+if [ $# -ne 3 ]; then
+  usage
+fi
+
+if [ $3 == "count" ]; then
+  for file in $(ls ${1})
+  do
+    printf "%s   " $file
+    marcread $file | grep "${2}" | wc -l
+  done
+elif [ $3 == "show" ]; then
+  for file in $(ls ${1})
+  do
+    printf "\n%s\n" $file
+    marcread $file | marcsearchhelper.pl ${2}
+  done
+else
+  usage
+fi
