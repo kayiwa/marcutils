@@ -1,0 +1,365 @@
+Marcedit Documentation
+
+With Marcedit, you can edit MARC format records via various
+add, edit, delete, and other directives you put in a marcedit.ini
+file.
+
+
+General Usage
+
+    marcedit inputfile outputfile [xxxmarcedit.ini]
+
+inputfile
+  The MARC file you wish to process
+output file
+  The resulting file
+xxxmarcedit.ini
+  The .ini file tells Marcedit what to do. If this optional parameter
+  is not supplied, Marcedit assumes that a file call marcedit.ini is
+  in the current directory. Otherwise you can supply a file of your
+  choice that contains Marcedit directives as described later in this
+  document. This method is useful for multiple different invocations
+  of Marcedit in a batch process.
+
+Each supplied filename may be preceded by the file path, if necessary.
+
+Any exceptions to the above usage are mentioned for any directives that
+are different.
+
+Depending on your expertise and how you've put Marcedit on your
+system, you may have to invoke Marcedit as marcedit.pl, or
+possibly ./marcedit.pl.
+
+
+Marcedit.ini
+
+This the file that tells Marcedit what to do.
+
+Any line preceded by the # character is considered a comment line
+and will be ignored by Marcedit.
+
+Every line starts in column 1.
+
+Marcedit processes stanzas in this order: add, edit, and remove.
+When exceptions occur, these are noted.
+
+There can be four stanzas, one for each function.
+
+Example:
+
+[ADD]
+049| | |1|a|alexstpres
+099| |9|1|a|_
+
+[REMOVE]
+260
+
+[EDIT]
+replacesubfield|655|2|local|LCSH
+addsubfield|651|b|2|LCSH
+changeindicator|655|2|*|7
+bracket245h
+
+[FIND]
+#not
+#655readonly||||||2
+
+
+When Marcedit reads the .ini file, once a stanza is encountered, it
+remains the current stanza until the next one is reached.
+
+Lines in a stanza are generally in this format:
+
+xxx|xxx|xxx|xxx|xxx|...
+
+The "|" is used as a field separator.
+
+Note:
+  While examples shown in this document have spaces
+  around the field separator, these are for clarity
+  of illustration only.
+  Do NOT use any spaces next to the "|" in your .ini file(s).
+
+The Edit functions are designed for fields 010 or greater;
+any exceptions are noted.
+
+
+
+The [ADD] Stanza
+
+[ADD]
+field | L1 | L2 | # | subfield | data
+
+  field
+    3 digits specify which field to add
+  L1
+    the first indicator character; space if empty
+  L2
+    the second indicator character; space if empty
+  #
+    the number of subfield+data pairings following
+  subfield
+    1 character denoting the subfield
+  data
+    the subfield data
+
+In each case, the field, with specified indicators, if any, subfield, and data
+is added as a complete field, whether or not such a field already exists.
+
+If you're adding a fixed field, leave L1, L2, "#", and subfield blank, empty,
+i.e., not even a space; to wit:  009|||||this is 009 stuff
+
+Put as many lines in the ADD stanza as you need.
+
+
+
+The [REMOVE] Stanza
+
+[REMOVE]
+field
+  3 digits specify which field to remove.
+  Each field specified is to be removed in its entirety.
+  Multiple fields can be specified in this stanza; one per line.
+
+record
+  If record is specified, the FIND stanza must also be used.
+  Then if a matching record is found, that entire record is omitted from
+  the output file.
+  If present, this overrides all other directives, that is, no other
+  editing takes place. The exception is that if you put unicodesplit in
+  the EDIT stanza, Marcedit never "sees" what else is in ADD, EDIT,
+  REMOVE, or FIND.
+  This entry should only appear once if used.
+
+
+
+The [EDIT] Stanza
+
+[EDIT]
+operation | xxx | xxx | xxx | ...
+
+The content of these lines will vary with the operation.
+
+Note:
+fieldaddtobeg is for indicatorless fields (001-009).
+
+
+Edit Templates/Functions:
+
+replacesubfield | field | subfield | olddata | newdata
+  field       3 digits specify the field
+  subfield    1 character denotes which subfield
+  olddata     specified field and subfield must have this data
+  newdata     if olddata found, replace with this
+
+replacesubfieldalways | field | subfield | newdata
+  field       3 digits specify the field
+  subfield    1 character denotes which subfield
+  newdata     unconditionally replace the specified
+              field's subfield with this
+
+dropsubfield | field | subfield | [first all last]
+  field       3 digits specify the field
+  subfield    1 character denotes which subfield
+  applies_to  drop only first or all or only last subfield(s)
+
+subfieldaddtobeg | field | subfield | data
+  field       3 digits specify the field
+  subfield    1 character denotes which subfield
+  data        unconditionally add this data to the beginning
+              of the specified field's subfield
+
+addsubfield | field | [b e] | subfield | data
+  field       3 digits specify the field
+  b or e      add subfield to beginning or end of field data
+  subfield    1 character denotes which subfield
+  data        new subfield data
+
+fieldaddtobeg | field | data
+  field       3 digits specify the field
+  data        new field data added to the beginning of the field
+  (only for fields without indicators (001-009)
+
+changeindicator | field | [1 2] | oldind | newind
+  field       3 digits specify the field
+  1 or 2      change first or second indicator
+  oldind      character signifying the old indicator
+  newind      character signifying the new indicator
+  (if oldind = "*", then always change the specified indicator)
+
+changeleaderchar | pos | changeto  [ | changeif ]
+  pos         position of character to be replaced (0-23)
+  changeto    change specified position to this char.
+    If this is the last parameter, this change will always be made
+  changeif    perform the specified change only if this character
+              is already there	
+  This function let's you change *any* character in the leader.
+  You should probably change positions 5-11, 17-19 only, so be careful.
+
+unicodesplit | unicodefile | non-unicode file
+  unicode file      This file gets Unicode MARC records.
+                    If not present, unicode_yes.marc is used.
+  non-unicode file  This file gets non-Unicode MARC records.
+                    If not present, unicode_no.marc is used.
+  Looks at leader byte 9 to determine if the record is Unicode or
+  not, and writes it to the appropriate output file.
+  (When using this function, NO other edit functions are performed.
+  outputfile must still be specified when invoking Marcedit, but
+  that parameter is ignored.)
+
+bracket245h
+  surrounds field 245, subfield h, if it doesn't already have them,
+  with brackets:  medium --> [medium]
+  takes subfield sequence into account and tries to preserve
+  or add correct trailing punctuation
+
+You can specify as many edit functions as necessary, one per line.
+
+
+
+The [FIND] Stanza
+
+Note: If you're new to FIND, it's probably best to read this entire
+section before proceeding.
+
+[FIND], if present, applies to all stanzas, if editing takes place.
+If more than one line is specified, the last line is used.
+
+You can put "not" on a line by itself, first thing, to get
+only those records not matching the find specification.
+
+
+TEMPLATE:
+
+field | yL1 | yL2 | nL1 | nL2 |       | subfield | casematch | data 
+                                any
+                                all
+                                first
+                                last
+  field       3 digits specify the field
+  L1          character signifying the first indicator
+              as 2nd parameter: 1st indicator must match this
+              as 4th parameter: 1st indicator must NOT match this
+  L2          character signifying the second indicator
+              as 3rd parameter: 2nd indicator must match this
+              as 5th parameter: 2nd indicator must NOT match this
+  "blank"     if this parameter is empty, "any" is assumed
+  any         match on first subfield and/or its data
+  all         all subfields' data must match
+  first       first subfield's data must match
+  last        last subfield's data must match
+  subfield    1 character denotes which subfield
+  casematch   if specified, subfield's data must have a case-sensitive match
+  data        subfield's data
+
+Note on indicators:
+  The "y" and "n" shown above are for illustration only. The actual template
+  should contain only the single indicator character for each indicator
+  parameter.
+  You cannot mix "y" and "n" for the same indicator, i.e.
+  yL1 and nL1 cannot be used at the same time.
+
+Note on data:
+  You can use the wildcard character "%":
+     %library.      - must end with "library."
+     The%           - must start with "The"
+     %Lincoln%      - must contain "Lincoln", which could be anywhere in data
+     The \% Factor% - must start with "The % Factor"
+
+  You can instead use the wildcard character "~":
+      ~library.      - data must NOT end with "library.".
+
+  The "~" functions like "%", but means NOT.
+
+  You can NOT mix "%" and "~".
+
+The first parameter, field, is required. The other parts are optional.
+
+If a field cannot have indicators or they are irrelevant, omit them.
+
+Specify all, first, last, or blank for which subfields are to be checked;
+blank = any.
+
+If a subfield is specified, but not the data, only the presence of a
+subfield is checked; the "all, first, last, or any" spec should be blank.
+If "all, first, last, or any" is used, results are indeterminate.
+
+If the word "casematch" doesn't appear before the subfield data,
+data checking will be case insensitive.
+
+You do not need to pad your FIND line with empty "|" on the right, unless
+you're supplying a parameter further right on the line.
+
+
+General Examples:
+
+field | yL1 | yL2 | | | | subfield | |
+    match indicator specs, and must have specified subfield
+
+
+field | | yL2 | nL1 | | all | subfield | casematch | data
+    match indicator specs, and must have specified subfield(s) with
+    specified data; data match is case sensitive
+
+
+Specific Examples:
+
+099 | 0 | | | a | last | a | | fun
+  record must have a 099 with first indicator of "0",
+  the second indicator cannot be "a", and the last subfield "a"
+  must have the text of "fun", "fUn", "FuN", ...; case doesn't matter
+
+245 | 0 | 1 | | | 
+  record must have a 245 with indicators "01"
+
+245 | 0 | 1
+  same results as previous example
+
+650 | | | | | first | c | casematch | %pipe Threading
+  record must have a 650 with the first subfield "c",
+  whose data must contain "pipe Threading" at the end
+
+In the "245" example, the parts of the spec after the indicators
+can be omitted entirely, as they are not needed in that case. In the "650"
+example, although the indicators are not relevant, their "|" separators
+must be there, as there is more data to the right.
+
+
+Fields Less Than "010"
+Specify only the field and a string expression to match.
+Matches are NOT case sensitive, and you can use the "%" and "~"
+wildcards.
+
+Example:
+003 | | | | | | | | OCoLC
+  the 003 must contain "ocolc"
+
+Remember that you do NOT put spaces in unused parameters!
+(They're shown here for clarity). In actual use, the "650" example
+would look like this:
+
+650|||||first|c|casematch|%pipe Threading
+
+
+Dry Run Mode
+
+This can be used to check if your Find specification is working,
+without changing any data.
+
+It will generate a human readable dump of the MARC records
+that would be processed if you hadn't used the "readonly" directive.
+Output is to the output file you specify when you run Marcedit.
+Immediately follow your fieldnumber with "readonly" if you
+want a dry run.
+
+245readonly | 0 | | | | | a | | This is the title
+  matches 245 with first indicator "0", and any subfield "a"
+  that is "This is the title", and output these records without editing
+
+
+Troublesome Characters When Using "%" or "~"
+The dollar sign "$" should be avoided. Some other characters
+(I've tested ?, [, ]) will need to have a "\" in front of them,
+to wit, "\[", if they are part of your search string. If you're
+experiencing problems with a particular character, try putting
+"\" in front of it.
